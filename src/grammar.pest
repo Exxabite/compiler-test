@@ -1,0 +1,19 @@
+program = _{ SOI ~ "\n"* ~ (func ~ "\n"+) * ~ func? ~ EOI }
+
+func = {"fn" ~ alpha ~ "()" ~ block}
+
+block = { "{" ~ expr* ~ "}" }
+
+expr = { assign_expr ~ ";"}
+
+assign_expr = { alpha ~ operator ~ value_expr }
+
+value_expr = { integer | alpha }
+
+operator = { "=" | "+="}
+
+alpha = { ('a'..'z' | 'A'..'Z')+ }
+
+integer = @{ "-"? ~ ASCII_DIGIT+ }
+
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
