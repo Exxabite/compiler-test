@@ -4,7 +4,7 @@ func = {"fn" ~ alpha ~ "()" ~ block}
 
 block = { "{" ~ expr* ~ "}" }
 
-expr = { assign_expr ~ ";"}
+expr = { (assign_expr | block) ~ ";"}
 
 assign_expr = { alpha ~ operator ~ value_expr }
 

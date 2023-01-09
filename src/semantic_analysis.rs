@@ -61,7 +61,7 @@ pub struct ScopeKey {
 }
 
 impl ScopeKey {
-    fn push(&self, index: u8) -> ScopeKey { //UPDATE!!
+    fn push(&self, index: u8) -> ScopeKey {
         let mut key = self.key.clone();
         key.push(index);
         ScopeKey { key: key }
@@ -75,6 +75,10 @@ impl ScopeKey {
 
     fn size(&self) -> u32 {
         self.key.len().try_into().unwrap()
+    }
+
+    pub fn from(v: Vec<u8>) -> ScopeKey {
+        ScopeKey { key: v }
     }
 }
 
@@ -116,115 +120,71 @@ impl SymbolTable {
     fn merge(&mut self, other: SymbolTable){
         self.table.extend(other.table);
     }
-/* 
+ 
     fn new() -> SymbolTable {
         SymbolTable { table: HashMap::new() }
     }
-*/
 
+    fn from(name: String, scope: ScopeKey, entry: Entry) -> SymbolTable { //Try to move to the symbol table namespace
+        SymbolTable { 
+            table: HashMap::from([(
+                TableKey{
+                    name: name,
+                    scope_key: scope
+                },
+                entry,
+            )]) 
+        }
+    }
 
 }
-
-
 
 pub fn semantic_analisis(root: Vec<AstNode>) -> SymbolTable {
     
     let mut table = SymbolTable{ table: HashMap::new() };
+    let mut index = 0;
 
-    for (i, node) in root.iter().enumerate() {
+    for node in root {
         let x = match node {
-            AstNode::Function { name, body } => generate_symbol_table(&*body, ScopeKey {key: vec![i.try_into().unwrap()]}), //Enters the body of the function, should be AstNode::Block. Functions get their own scope above the main block
+            AstNode::Function { name, body } => {
+                //index += 1;
+                let x = traverse(&*body, ScopeKey {key: vec![index]});
+                index += 1;
+                x
+            }, //Enters the body of the function, should be AstNode::Block. Functions get? their own scope above the main block
             _ => panic!("Unfinished semantic_analisis")
         };
         table.merge(x);
     }
 
-    fn generate_symbol_table(node: &AstNode, scope: ScopeKey) -> SymbolTable {
+    fn traverse(node: &AstNode, scope: ScopeKey) -> SymbolTable {
+        let mut i = 0;
+
         match node {
             AstNode::Block(block) => {
                 let mut table = SymbolTable { table: HashMap::new() };
-                let mut index = 0;
 
-                for line in block { //Iterates over the lines in block
-                    table.merge(generate_symbol_table(line, scope.push(index))); //Make sure this is right
+                for line in block {
                     match line {
-                        AstNode::Block(_) => index += 1,
-                        _ => (),
-                    }
+                        AstNode::Block(_) => {table.merge(traverse(line, scope.push(i))); i += 1},
+                        _ => table.merge(traverse(line, scope.clone()))
+                    }  
                 }
+                
                 table
-            }
-            AstNode::MutationExpression { target, verb, expr } => {
-                match &**target {
-                    AstNode::Name(name) => SymbolTable { 
-                        table: HashMap::from([(
-                            TableKey{
-                                name: name.clone(),
-                                scope_key: scope
-                            },
-                            Entry::Variable {
-                                data_type: "Temporary Example Type".to_string()
-                            }
-                        )]) 
-                    },
-                    _ => unreachable!("taget needs to be name")
-                } //Gets the value for the left side, a temporary settup for testing (Change later)
-            }
-            _ => panic!("Invalid symbol table generation")
+            },
+            AstNode::MutationExpression { target, verb: _, expr: _} => evaluate(target, scope), //Gets the value for the left side, a temporary settup for testing (Change later)
+            _ => SymbolTable { table: HashMap::new() }
+        }
+    }
+
+    fn evaluate(node: &AstNode, scope: ScopeKey) -> SymbolTable {
+        match node {
+            AstNode::MutationExpression { target, verb, expr } => evaluate(target, scope), //Gets the value for the left side, a temporary settup for testing (Change later)
+            AstNode::Name(name) => SymbolTable::from(name.clone(), scope, Entry::Variable { data_type: "Temporary Example Type".to_string() }),
+            _ => SymbolTable { table: HashMap::new()}
         }
     }
 
     table
 }
-/* 
-
-fn semantic_analisis(root: Vec<AstNode>) {
-    let key: Vec<u8> = vec![];
-
-    let mut table: SymbolTable;
-
-    let mut index: u8 = 0;
-
-    for node in root {
-        let x = match node {
-            AstNode::Function { name, body } => generate_symbol_table(&*body, push(key, index)),
-            _ => panic!("Unfinished semantic_analisis")
-        };
-        table.merge(x);
-        index += 1;
-    }
-
-    //return table;
-
-    fn push(key: Vec<u8>, index: u8) -> Vec<u8> {
-        key.push(index);
-        key
-    }
-
-    fn generate_symbol_table(node: &AstNode, key: Vec<u8>) -> SymbolTable { //
-        match node {
-            AstNode::Block(x) => {
-                let table: SymbolTable;
-                for n in x {
-                    table.merge(generate_symbol_table(n, key)); //Make sure this is right
-                }
-                table
-            }
-            AstNode::MutationExpression { target, verb: _, expr: _ } => generate_symbol_table(&*target, key),
-            AstNode::Name(name) => SymbolTable { 
-                table: HashMap::from([(
-                    TableKey{
-                        name: *name,
-                        scope_key: key
-                    },
-                    Entry::Variable {
-                        data_type: "TMP".to_string()
-                    }
-                )]) 
-            },
-
-        }
-    }
-
-}
-*/
