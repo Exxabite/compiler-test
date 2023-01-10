@@ -4,15 +4,19 @@ func = {"fn" ~ alpha ~ "()" ~ block}
 
 block = { "{" ~ expr* ~ "}" }
 
-expr = { (assign_expr | block) ~ ";"}
+expr = { (assign_expr | block | declare_expr) ~ ";"}
 
-assign_expr = { alpha ~ operator ~ value_expr }
+declare_expr = { data_type ~ alpha ~ "=" ~ value_expr }
+
+assign_expr = {  alpha ~ operator ~ value_expr }
 
 value_expr = { integer | alpha }
 
+data_type = { alpha ~ ":" }
+
 operator = { "=" | "+="}
 
-alpha = { ('a'..'z' | 'A'..'Z')+ }
+alpha = @{ (ASCII_ALPHA | "_")+ }
 
 integer = @{ "-"? ~ ASCII_DIGIT+ }
 

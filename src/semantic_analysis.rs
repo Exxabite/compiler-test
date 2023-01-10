@@ -25,6 +25,30 @@ pub struct SymbolTable {
     table: HashMap<TableKey, Entry>,
 }
 
+pub struct TypeTable {
+    table: HashMap<String, TypeData>
+}
+
+pub struct TypeData {
+    assignment_valid: Vec<String>,
+    mutation_valid: Vec<String>
+}
+
+impl TypeTable {
+    fn insert(&mut self, name: String, data: TypeData) { //Should never overwrite values, validity needs to be checked before calling
+        self.table.insert(name, data);
+    }
+
+    fn add_assignment(&mut self, name: String, assignment: String){ //Will be usefull for operator overloading
+        self.table.get_mut(&name).unwrap().assignment_valid.push(assignment);
+    }
+
+    fn check(&self, name: &String) -> Option<&TypeData> {
+        self.table.get(name)
+    }
+
+}
+
 ///Definition of scope key:
 ///
 ///A scope key is a unique identifier that describes the scope of a variable, function or block.
@@ -139,9 +163,29 @@ impl SymbolTable {
 
 }
 
+lazy_static! {
+    static ref TYPES: TypeTable = TypeTable {table: HashMap::from([
+        (
+            "int_literal".to_string(),
+            TypeData {
+                assignment_valid: vec![],
+                mutation_valid:   vec![]
+            } 
+        ),
+        (
+            "int".to_string(),
+            TypeData {
+                assignment_valid: vec!["int_literal".to_string(), "int".to_string()],
+                mutation_valid:   vec!["int_literal".to_string(), "int".to_string()]
+            }
+        ),
+    ])};
+}
+
 pub fn semantic_analisis(root: Vec<AstNode>) -> SymbolTable {
     
     let mut table = SymbolTable{ table: HashMap::new() };
+
     let mut index = 0;
 
     for node in root {
@@ -151,7 +195,7 @@ pub fn semantic_analisis(root: Vec<AstNode>) -> SymbolTable {
                 let x = traverse(&*body, ScopeKey {key: vec![index]});
                 index += 1;
                 x
-            }, //Enters the body of the function, should be AstNode::Block. Functions get? their own scope above the main block
+            }, //Enters the body of the function, should be AstNode::Block. Functions do not get their own scope above the main block
             _ => panic!("Unfinished semantic_analisis")
         };
         table.merge(x);
@@ -174,7 +218,23 @@ pub fn semantic_analisis(root: Vec<AstNode>) -> SymbolTable {
                 table
             },
             AstNode::MutationExpression { target, verb: _, expr: _} => evaluate(target, scope), //Gets the value for the left side, a temporary settup for testing (Change later)
+            AstNode::Declaration { data_type, name, expr: _} => { //Expr need to be used eventually
+                let var_name = evaluate_to_string(&**name);
+                let var_type = evaluate_to_string(&**data_type);
+
+                match TYPES.check(&var_type) {
+                    Some(x) => SymbolTable::from(var_name, scope, Entry::Variable { data_type: var_type }),
+                    None => panic!("Invalid type: {:?}", var_type)
+                }
+            }
             _ => SymbolTable { table: HashMap::new() }
+        }
+    }
+
+    fn evaluate_to_string(node: &AstNode) -> String {
+        match node {
+            AstNode::Name(name) => name.clone(),
+            x => unreachable!("evaluate_to_string invalid node type: {:?}", x)
         }
     }
 

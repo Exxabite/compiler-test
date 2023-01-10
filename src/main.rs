@@ -1,6 +1,8 @@
 extern crate pest;
 #[macro_use]
 extern crate pest_derive;
+#[macro_use]
+extern crate lazy_static;
 
 mod semantic_analysis;
 pub use crate::semantic_analysis::*;
@@ -26,6 +28,12 @@ fn serialize(node: &AstNode) -> String {
             let sverb = serialize_mutation_verb(verb);
             format!("{lhs} mutated as \"{sverb}\" by {rhs}\n")
         }
+        AstNode::Declaration { data_type, name, expr } => {
+            let data_type = serialize(&**data_type);
+            let name = serialize(&**name);
+            let expr = serialize(&**expr);
+            format!("create {name} of type {data_type } assinged to {expr}\n")
+        }
         AstNode::Integer(i) => i.to_string(),
         _ => unreachable!("AST node serialization error"),
     }
@@ -40,7 +48,7 @@ fn serialize_mutation_verb(verb: &MutationVerb) -> String {
 }
 
 fn main() {
-    let unparsed_file = std::fs::read_to_string("src.txt").expect("cannot read M file");
+    let unparsed_file = std::fs::read_to_string("src.m").expect("cannot read M file");
     let astnode = parse(&unparsed_file).expect("unsuccessful parse");
 
     let str = serialize(&astnode[0]);

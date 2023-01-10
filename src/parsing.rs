@@ -32,6 +32,11 @@ pub enum AstNode {
         verb: MutationVerb,
         expr: Box<AstNode>, //This refers to an expresion that will return a value
     },
+    Declaration {
+        data_type: Box<AstNode>,
+        name: Box<AstNode>,
+        expr: Box<AstNode>
+    },
     Name(String),
     Integer(i32)
 }
@@ -89,7 +94,24 @@ fn build_ast(pair: pest::iterators::Pair<Rule>) -> AstNode {
             let integer: i32 = istr.parse().unwrap();
             AstNode::Integer(sign * integer)
         },
-        _ => panic!("Build AST error!")
+        Rule::declare_expr => {
+            let mut pair = pair.into_inner();
+            let data_type = build_ast(pair.next().unwrap());
+            let name = build_ast(pair.next().unwrap());
+            let expr = build_ast(pair.next().unwrap());
+            parse_declaration(data_type, name, expr)
+
+        }
+        Rule::data_type => build_ast(pair.into_inner().next().unwrap()),
+        x => panic!("Build AST error: Rule::{:?}", x)
+    }
+}
+
+fn parse_declaration(data_type: AstNode, name: AstNode, expr: AstNode) -> AstNode {
+    AstNode::Declaration { 
+        data_type: Box::new(data_type),
+        name: Box::new(name),
+        expr: Box::new(expr)
     }
 }
 
@@ -103,5 +125,4 @@ fn parse_mutation_verb(pair: pest::iterators::Pair<Rule>, lhs: AstNode, rhs: Ast
         },
         expr: Box::new(rhs),
     }
-    
 }

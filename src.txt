@@ -1,5 +1,0 @@
-fn apple() {
-    ace = 5;
-    brick += -14;
-    bean = ace;
-}
